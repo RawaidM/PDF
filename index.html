@@ -41,8 +41,43 @@
       text-align: center;
     }
 
-    .tasirmaOnleme{
+    .tasirmaOnleme {
       word-break: break-word;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      -webkit-hyphens: auto;
+      -ms-hyphens: auto;
+      hyphens: auto;
+      white-space: pre-wrap;
+      max-width: 100%;
+      line-height: 1.4;
+      font-size: 14px;
+    }
+
+    /* Ensure table cells also handle text wrapping properly */
+    table td {
+      word-break: break-word;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+      padding: 8px;
+      max-width: 200px;
+      line-height: 1.4;
+    }
+
+    /* General text handling for PDF */
+    .page {
+      width: 210mm;
+      min-height: 296mm;
+      margin: 0 auto;
+      padding: 16mm;
+      background: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+      position: relative;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      line-height: 1.4;
     }
 
 
@@ -486,13 +521,23 @@
         margin: 0,
         filename: 'belge.pdf',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 5, scrollY: 0 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        wrapContent: true
+        html2canvas: { 
+          scale: 2,
+          scrollY: 0,
+          letterRendering: true,
+          useCORS: true,
+          allowTaint: true
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true,
+          precision: 4
+        }
       };
-
+    
       // PDF oluşturmadan önce elementleri gizle
-      const border = document.getElementById('deneme');
       const urunEklemeForm = document.querySelector('.w-full.mt-4.mb-2.flex.gap-2');
       const deleteButtons = document.querySelectorAll('.delete-btn');
       const islemColumns = document.querySelectorAll('th:last-child, td:last-child');
@@ -500,29 +545,59 @@
       
       // Mevcut görünürlük durumlarını sakla
       const originalFormDisplay = urunEklemeForm.style.display;
-      const originalDolarKuruDisplay = dolarKuruDiv.style.display;
+      const originalDolarKuruDisplay = dolarKuruDiv ? dolarKuruDiv.style.display : '';
       
+      // Geçici stil ekle
+      const tempStyle = document.createElement('style');
+      tempStyle.innerHTML = `
+        .page * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          word-break: break-word !important;
+          word-wrap: break-word !important;
+          overflow-wrap: break-word !important;
+          white-space: normal !important;
+        }
+        table td {
+          max-width: none !important;
+          white-space: normal !important;
+          overflow: visible !important;
+        }
+        .tasirmaOnleme {
+          white-space: normal !important;
+          word-break: break-word !important;
+        }
+      `;
+      document.head.appendChild(tempStyle);
+    
       // Elementleri gizle
       urunEklemeForm.style.display = 'none';
       deleteButtons.forEach(btn => btn.style.display = 'none');
       islemColumns.forEach(col => col.style.display = 'none');
-      dolarKuruDiv.style.display = 'none';
-
+      if (dolarKuruDiv) dolarKuruDiv.style.display = 'none';
+    
       // PDF oluştur ve indir
-      html2pdf().set(opt).from(element).save().then(() => {
-        // PDF oluşturma işlemi tamamlandıktan sonra elementleri eski haline getir
-        urunEklemeForm.style.display = originalFormDisplay;
-        deleteButtons.forEach(btn => btn.style.display = '');
-        islemColumns.forEach(col => col.style.display = '');
-        dolarKuruDiv.style.display = originalDolarKuruDisplay;
-      }).catch(err => {
-        console.error('PDF oluşturma hatası:', err);
-        // Hata durumunda da elementleri eski haline getir
-        urunEklemeForm.style.display = originalFormDisplay;
-        deleteButtons.forEach(btn => btn.style.display = '');
-        islemColumns.forEach(col => col.style.display = '');
-        dolarKuruDiv.style.display = originalDolarKuruDisplay;
-      });
+      html2pdf()
+        .set(opt)
+        .from(element)
+        .save()
+        .then(() => {
+          // PDF oluşturma işlemi tamamlandıktan sonra elementleri eski haline getir
+          urunEklemeForm.style.display = originalFormDisplay;
+          deleteButtons.forEach(btn => btn.style.display = '');
+          islemColumns.forEach(col => col.style.display = '');
+          if (dolarKuruDiv) dolarKuruDiv.style.display = originalDolarKuruDisplay;
+          document.head.removeChild(tempStyle);
+        })
+        .catch(err => {
+          console.error('PDF oluşturma hatası:', err);
+          // Hata durumunda da elementleri eski haline getir
+          urunEklemeForm.style.display = originalFormDisplay;
+          deleteButtons.forEach(btn => btn.style.display = '');
+          islemColumns.forEach(col => col.style.display = '');
+          if (dolarKuruDiv) dolarKuruDiv.style.display = originalDolarKuruDisplay;
+          document.head.removeChild(tempStyle);
+        });
     });
     
     // Sayfa yüklendiğinde tutarları hesapla
